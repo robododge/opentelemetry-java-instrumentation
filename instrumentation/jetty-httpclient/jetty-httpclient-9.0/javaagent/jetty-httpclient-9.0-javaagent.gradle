@@ -1,0 +1,19 @@
+apply from: "$rootDir/gradle/instrumentation.gradle"
+
+muzzle {
+  pass {
+    group = "org.eclipse.jetty"
+    module = 'jetty-client'
+    versions = "[9.0,11)"
+  }
+}
+
+dependencies {
+  implementation( group: 'org.eclipse.jetty', name: 'jetty-client', version: '9.0.0.v20130308')
+
+
+  testLibrary group: 'org.eclipse.jetty', name: 'jetty-servlet', version: '9.3.28.v20191105'
+  testLibrary group: 'org.eclipse.jetty', name: 'jetty-continuation', version: '9.3.28.v20191105'
+  testLibrary group: 'org.eclipse.jetty', name: 'jetty-client', version: '9.3.28.v20191105'
+
+}
