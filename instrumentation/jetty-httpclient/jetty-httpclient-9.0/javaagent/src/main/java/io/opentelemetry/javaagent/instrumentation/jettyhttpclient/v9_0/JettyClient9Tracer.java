@@ -2,6 +2,7 @@ package io.opentelemetry.javaagent.instrumentation.jettyhttpclient.v9_0;
 
 import static io.opentelemetry.javaagent.instrumentation.jettyhttpclient.v9_0.RequestHeaderInjectAdapter.SETTER;
 
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.propagation.TextMapSetter;
 import io.opentelemetry.instrumentation.api.tracer.HttpClientTracer;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -45,6 +46,18 @@ public class JettyClient9Tracer extends HttpClientTracer<Request, Request, Respo
   protected @Nullable String responseHeader(Response response, String name) {
     HttpFields headers = response.getHeaders();
     return extractHeader(headers, name);
+  }
+
+  /**
+   * Override so can be called from interceptor code
+   * @param span
+   * @param request
+   */
+  @Override
+  protected void onRequest(Span span, Request request) {
+    super.onRequest(span, request);
+
+    span.setAttribute("jetty.style", "async");
   }
 
   @Override

@@ -59,7 +59,7 @@ public class JettyHttpClient9InstrumentationModule extends InstrumentationModule
           isMethod()
               .and(named("newRequest"))
               .and(takesArguments(1))
-              .and(takesArgument(1, named("java.lang.String"))),
+              .and(takesArgument(0, java.net.URI.class)),
           JettyHttpClient9InstrumentationModule.class.getName() + "$JettyHttpClient9Advice");
 
     }
@@ -67,14 +67,15 @@ public class JettyHttpClient9InstrumentationModule extends InstrumentationModule
 
   public static class JettyHttpClient9Advice {
     @Advice.OnMethodExit
-    public static void addTracingInterceptor(@Advice.This Request jettyRequest) {
+    public static void addTracingInterceptor(@Advice.Return Request jettyRequest) {
+      System.out.println("ENTERING JETTY ADVICE!!! ");
       List<JettyClient9TracingInterceptor> current = jettyRequest
           .getRequestListeners(JettyClient9TracingInterceptor.class);
-      if (current.isEmpty()) {
-        LOG.debug("Jetty9 Listener is already instrumented for request");
+      if (!current.isEmpty()) {
+//        LOG.debug("Jetty9 Listener is already instrumented for request");
         return;
       }
-      LOG.debug("Insturmenting new Jetty9 Listener  for request");
+//      LOG.debug("Insturmenting new Jetty9 Listener  for request");
       JettyClient9TracingInterceptor jettyListener = new JettyClient9TracingInterceptor();
       jettyRequest.onRequestBegin(jettyListener)
           .onRequestFailure(jettyListener)
