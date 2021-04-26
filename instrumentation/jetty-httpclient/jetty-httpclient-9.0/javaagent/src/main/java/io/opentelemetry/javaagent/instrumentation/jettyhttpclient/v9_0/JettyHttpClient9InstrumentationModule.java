@@ -5,6 +5,8 @@
 
 package io.opentelemetry.javaagent.instrumentation.jettyhttpclient.v9_0;
 
+import static io.opentelemetry.javaagent.instrumentation.api.Java8BytecodeBridge.currentContext;
+import static io.opentelemetry.javaagent.instrumentation.jettyhttpclient.v9_0.JettyClient9Tracer.tracer;
 import static io.opentelemetry.javaagent.tooling.bytebuddy.matcher.ClassLoaderMatcher.hasClassesNamed;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
@@ -14,6 +16,8 @@ import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
 import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
 import com.google.auto.service.AutoService;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
 import io.opentelemetry.javaagent.tooling.InstrumentationModule;
 import io.opentelemetry.javaagent.tooling.TypeInstrumentation;
 import java.util.List;
@@ -63,24 +67,53 @@ public class JettyHttpClient9InstrumentationModule extends InstrumentationModule
           JettyHttpClient9InstrumentationModule.class.getName() + "$JettyHttpClient9Advice");
 
     }
+
   }
 
   public static class JettyHttpClient9Advice {
-    @Advice.OnMethodExit
-    public static void addTracingInterceptor(@Advice.Return Request jettyRequest) {
-      System.out.println("ENTERING JETTY ADVICE!!! ");
+
+    @Advice.OnMethodEnter( suppress = Throwable.class)
+    public static void addTracingEnter( @Advice.Local("otelContext") Context context ){
+      System.out.println("OnMethodEnter ENTERING JETTY ADVICE!!! ");
+      Context parentContext = currentContext();
+      if (!tracer().shouldStartSpan(parentContext)) {
+        return;
+      }
+      context = parentContext;
+    }
+
+
+    @Advice.OnMethodExit( suppress = Throwable.class)
+    public static void addTracingInterceptor(
+        @Advice.Return Request jettyRequest,
+        @Advice.Local("otelContext") Context context) {
+
+      System.out.println("OnMethodExit ENTERING JETTY ADVICE!!! ");
+
+      if (context == null) {
+        System.out.println("0b -Cannot proceed tracing without a context! ");
+        return;
+      }
+
       List<JettyClient9TracingInterceptor> current = jettyRequest
           .getRequestListeners(JettyClient9TracingInterceptor.class);
       if (!current.isEmpty()) {
-//        LOG.debug("Jetty9 Listener is already instrumented for request");
+        System.out.println("0c - A tracing interceptor is already in place for this request! ");
         return;
       }
-//      LOG.debug("Insturmenting new Jetty9 Listener  for request");
-      JettyClient9TracingInterceptor jettyListener = new JettyClient9TracingInterceptor();
-      jettyRequest.onRequestBegin(jettyListener)
-          .onRequestFailure(jettyListener)
-          .onResponseFailure(jettyListener)
-          .onResponseSuccess(jettyListener);
+
+      // I think here I don't need attach context to current thread because context is passed explicitly
+      try (Scope scope = context.makeCurrent() ) {
+        System.out.println("0d - Starting a new tracer on request! ");
+        JettyClient9TracingInterceptor jettyListener = new JettyClient9TracingInterceptor(context);
+        jettyRequest.onRequestBegin(jettyListener)
+            .onRequestFailure(jettyListener)
+            .onResponseFailure(jettyListener)
+            .onResponseSuccess(jettyListener);
+
+      }
+
+
     }
   }
 }
