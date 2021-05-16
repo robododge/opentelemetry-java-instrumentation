@@ -8,7 +8,7 @@ publishing {
         project.shadow.component(it)
         //These two are here just to satisfy Maven Central
         artifact sourcesJar
-        artifact javadocJar
+//        artifact javadocJar
       } else {
         project.plugins.withId("java-platform") {
           from(components["javaPlatform"])

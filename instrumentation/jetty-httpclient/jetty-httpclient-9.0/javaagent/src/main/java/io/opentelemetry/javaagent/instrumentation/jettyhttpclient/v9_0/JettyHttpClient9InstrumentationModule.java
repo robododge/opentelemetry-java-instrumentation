@@ -72,9 +72,12 @@ public class JettyHttpClient9InstrumentationModule extends InstrumentationModule
 
   public static class JettyHttpClient9Advice {
 
-    @Advice.OnMethodEnter( suppress = Throwable.class)
-    public static void addTracingEnter( @Advice.Local("otelContext") Context context ){
-      System.out.println("OnMethodEnter ENTERING JETTY ADVICE!!! ");
+    @Advice.OnMethodEnter()
+    public static void addTracingEnter(
+        @Advice.Local("otelContext") Context context,
+        @Advice.Argument(2) Request jettyReqWrong){
+      System.out.println("OnMethodEnter ENTERING JETTY ADVICE my02!!! ");
+      System.out.println("Jetty req WRONG:"+jettyReqWrong);
       Context parentContext = currentContext();
       if (!tracer().shouldStartSpan(parentContext)) {
         return;
