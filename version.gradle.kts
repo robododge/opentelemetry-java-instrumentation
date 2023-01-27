@@ -1,4 +1,4 @@
-val snapshot = false
+val snapshot = true
 
 allprojects {
   var ver = "1.13.1"
@@ -6,7 +6,7 @@ allprojects {
     ver += "-alpha"
   }
   if (snapshot) {
-    ver += "-SNAPSHOT"
+    ver += "-debug_clnj"
   }
   version = ver
 }

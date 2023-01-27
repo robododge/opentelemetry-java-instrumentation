@@ -118,6 +118,7 @@ public class GlobalIgnoredTypesConfigurer implements IgnoredTypesConfigurer {
         .ignoreClassLoader("clojure.lang.DynamicClassLoader")
         .ignoreClassLoader("org.apache.cxf.common.util.ASMHelper$TypeHelperClassLoader")
         .ignoreClassLoader("sun.misc.Launcher$ExtClassLoader")
+        .ignoreClassLoader("org.codehaus.janino.ByteArrayClassLoader")
         .ignoreClassLoader(AgentClassLoader.class.getName())
         .ignoreClassLoader(ExtensionClassLoader.class.getName());
 

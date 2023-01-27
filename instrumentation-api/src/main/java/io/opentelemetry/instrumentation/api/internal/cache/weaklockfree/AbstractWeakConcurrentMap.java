@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import javax.annotation.Nullable;
 
@@ -52,6 +53,13 @@ abstract class AbstractWeakConcurrentMap<K, V, L> extends ReferenceQueue<K>
     implements Runnable, Iterable<Map.Entry<K, V>> {
 
   final ConcurrentMap<WeakKey<K>, V> target;
+
+  static final AtomicInteger aInt = new AtomicInteger();
+  static final AtomicInteger weakKeyCount = new AtomicInteger();
+  static final AtomicInteger janinoCount = new AtomicInteger();
+  static final AtomicInteger otherClCount = new AtomicInteger();
+  static final AtomicInteger expungeCount = new AtomicInteger();
+
 
   protected AbstractWeakConcurrentMap() {
     this(new ConcurrentHashMap<>());
@@ -140,6 +148,9 @@ abstract class AbstractWeakConcurrentMap<K, V, L> extends ReferenceQueue<K>
     if (key == null || value == null) {
       throw new NullPointerException();
     }
+    System.out.println("--Putting a new entry in target: ");
+    printCurrenStack(key, value);
+
     return target.put(new WeakKey<>(key, this), value);
   }
 
@@ -159,6 +170,8 @@ abstract class AbstractWeakConcurrentMap<K, V, L> extends ReferenceQueue<K>
     } finally {
       resetLookupKey(lookupKey);
     }
+    System.out.println("--Putting If Absent a new entry in target: ");
+    printCurrenStack(key, value);
     return previous == null ? target.putIfAbsent(new WeakKey<>(key, this), value) : previous;
   }
 
@@ -173,9 +186,18 @@ abstract class AbstractWeakConcurrentMap<K, V, L> extends ReferenceQueue<K>
     } finally {
       resetLookupKey(lookupKey);
     }
-    return previous == null
-        ? target.computeIfAbsent(new WeakKey<>(key, this), ignored -> mappingFunction.apply(key))
-        : previous;
+
+    //Don't track the classloader stuff
+    if (!ClassLoader.class.isAssignableFrom(key.getClass())) {
+      System.out.println("--computeIfAbsent: ");
+    }
+
+
+
+    V retVal = (previous==null) ? target.computeIfAbsent(new WeakKey<>(key, this), ignored -> mappingFunction.apply(key)) : previous;
+
+    printCurrenStack(key, retVal);
+    return retVal;
   }
 
   /**
@@ -226,7 +248,12 @@ abstract class AbstractWeakConcurrentMap<K, V, L> extends ReferenceQueue<K>
   /** Cleans all unused references. */
   public void expungeStaleEntries() {
     Reference<?> reference;
+
     while ((reference = poll()) != null) {
+      System.out.println("\n---YES YES YES we can expunge refernce: "+reference);
+      System.out.println("");
+      Thread.dumpStack();
+
       target.remove(reference);
     }
   }
@@ -302,6 +329,21 @@ abstract class AbstractWeakConcurrentMap<K, V, L> extends ReferenceQueue<K>
 
     WeakKey(K key, ReferenceQueue<? super K> queue) {
       super(key, queue);
+      int weakKeyCnt = weakKeyCount.getAndIncrement();
+      System.err.printf("New WeakKey.referent[%d]: %s\n", weakKeyCnt, key.toString());
+      System.out.printf("New WeakKey.referent[%d]: %s\n", weakKeyCnt, key.toString());
+      int janinoCnt = janinoCount.get();
+      if (janinoCnt < 100 && key.toString().contains("janino")) {
+        janinoCount.getAndIncrement();
+        Thread.dumpStack();
+      }
+
+      int otherClCnt = otherClCount.get();
+      if (otherClCnt < 3000)  {
+        otherClCount.getAndIncrement();
+        Thread.dumpStack();
+      }
+
       hashCode = System.identityHashCode(key);
     }
 
@@ -367,7 +409,7 @@ abstract class AbstractWeakConcurrentMap<K, V, L> extends ReferenceQueue<K>
       }
     }
 
-    @Override
+//    @Override
     public void remove() {
       throw new UnsupportedOperationException();
     }
@@ -380,9 +422,13 @@ abstract class AbstractWeakConcurrentMap<K, V, L> extends ReferenceQueue<K>
     final Map.Entry<WeakKey<K>, V> entry;
 
     private SimpleEntry(K key, Map.Entry<WeakKey<K>, V> entry) {
+//      System.out.println("==Constructor for SimpleEntry:");
+//      printCurrenStack(key, entry.getValue());
       this.key = key;
       this.entry = entry;
     }
+
+
 
     @Override
     public K getKey() {
@@ -399,7 +445,38 @@ abstract class AbstractWeakConcurrentMap<K, V, L> extends ReferenceQueue<K>
       if (value == null) {
         throw new NullPointerException();
       }
+//      System.out.println("==Setting value of SimpleEntry:");
+//      printCurrenStack(key, value);
       return entry.setValue(value);
     }
+  }
+
+  private  void printCurrenStack(K key, V value) {
+
+    Class<?> entryValueClass = value.getClass();
+    Class<?> keyClass = key.getClass();
+
+    Integer stackCount = aInt.incrementAndGet();
+
+    //Don't track the classloader stuff
+    if ( !ClassLoader.class.isAssignableFrom(keyClass)) {
+      System.out.printf("==ClassName of key%s, key:%s\n value:%s actual value:%s\n", keyClass.getName(),key.toString(), entryValueClass.getName(), value.toString());
+    }
+
+//    StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+//    if (stackCount < 5) {
+//      for (StackTraceElement st : stackTrace) {
+//        System.out.println(st);
+//      }
+//    }
+    if (stackCount < 100) {
+      Thread.dumpStack();
+    }
+
+
+
+
+
+
   }
 }
