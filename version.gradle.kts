@@ -7,4 +7,5 @@ allprojects {
   } else {
     version = stableVersion
   }
+  version = "1.21.0-debug"
 }

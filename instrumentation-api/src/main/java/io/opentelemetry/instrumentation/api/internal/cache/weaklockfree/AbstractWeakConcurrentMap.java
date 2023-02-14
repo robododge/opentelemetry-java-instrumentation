@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import javax.annotation.Nullable;
 
@@ -54,6 +55,8 @@ abstract class AbstractWeakConcurrentMap<K, V, L> implements Iterable<Map.Entry<
 
   final ConcurrentMap<WeakKey<K>, V> target;
   private final WeakReference<ConcurrentMap<WeakKey<K>, ?>> weakTarget;
+
+  final static AtomicInteger weakKeyCounter = new AtomicInteger();
 
   protected AbstractWeakConcurrentMap() {
     this(new ConcurrentHashMap<>());
@@ -178,6 +181,7 @@ abstract class AbstractWeakConcurrentMap<K, V, L> implements Iterable<Map.Entry<
     } finally {
       resetLookupKey(lookupKey);
     }
+
     return previous == null
         ? target.computeIfAbsent(
             new WeakKey<>(key, weakTarget), ignored -> mappingFunction.apply(key))
@@ -318,6 +322,13 @@ abstract class AbstractWeakConcurrentMap<K, V, L> implements Iterable<Map.Entry<
 
     WeakKey(K key, WeakReference<ConcurrentMap<WeakKey<K>, ?>> ownerRef) {
       super(key, REFERENCE_QUEUE);
+
+      int wCnt = weakKeyCounter.getAndIncrement();
+      System.err.printf("New WeakKey.referent[%d]: %s \n", wCnt, key.toString());
+      if (wCnt < 80000) {
+        Thread.dumpStack();
+      }
+
       hashCode = System.identityHashCode(key);
       this.ownerRef = ownerRef;
     }
