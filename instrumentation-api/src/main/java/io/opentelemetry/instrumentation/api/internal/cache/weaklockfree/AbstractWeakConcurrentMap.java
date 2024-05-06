@@ -375,12 +375,14 @@ abstract class AbstractWeakConcurrentMap<K, V, L> implements Iterable<Map.Entry<
       if (koalaCnt < KOALA_CL_COUNTER_LIMIT && key.toString().contains("koala")) {
         koalaCLCounter.incrementAndGet();
         System.err.printf("Found a koala class loader number[%d]: %s \n", koalaCnt, key);
+        Thread.dumpStack();
       }
 
       int generalCnt = generalCLCounter.get();
       if (generalCnt < GENERAL_CL_COUNTER_LIMIT ) {
         generalCLCounter.incrementAndGet();
         System.err.printf("Found a general class loader number[%d]: %s \n", generalCnt, key);
+        Thread.dumpStack();
       }
 
       hashCode = System.identityHashCode(key);

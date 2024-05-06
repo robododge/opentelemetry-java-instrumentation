@@ -10,6 +10,7 @@ import static java.util.logging.Level.FINE;
 import io.opentelemetry.instrumentation.api.internal.cache.Cache;
 import io.opentelemetry.javaagent.bootstrap.PatchLogger;
 import io.opentelemetry.javaagent.tooling.util.Trie;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.matcher.ElementMatcher;
@@ -21,6 +22,8 @@ public class IgnoredClassLoadersMatcher extends ElementMatcher.Junction.Abstract
   private static final Cache<ClassLoader, Boolean> skipCache = Cache.weak();
 
   private final Trie<IgnoreAllow> ignoredClassLoaders;
+
+  private static final AtomicInteger igoreKoalaCLCount = new AtomicInteger(0);
 
   public IgnoredClassLoadersMatcher(Trie<IgnoreAllow> ignoredClassLoaders) {
     this.ignoredClassLoaders = ignoredClassLoaders;
@@ -35,10 +38,24 @@ public class IgnoredClassLoadersMatcher extends ElementMatcher.Junction.Abstract
 
     String name = cl.getClass().getName();
 
+    int koalaCLCount = igoreKoalaCLCount.get();
+    boolean foundKoala = false;
+    if (koalaCLCount < 1000 && name.contains("koala")) {
+      igoreKoalaCLCount.incrementAndGet();
+      Thread.dumpStack();
+      foundKoala = true;
+    }
+
     IgnoreAllow ignored = ignoredClassLoaders.getOrNull(name);
     if (ignored == IgnoreAllow.ALLOW) {
+      if (foundKoala) {
+        System.err.printf("Found a koala CLASSLOADER in ignores classloader checking '%s' MATCH=false\n", name);
+      }
       return false;
     } else if (ignored == IgnoreAllow.IGNORE) {
+      if (foundKoala) {
+        System.err.printf("Found a koala CLASSLOADER in ignores classloader checking '%s' MATCH=true\n", name);
+      }
       return true;
     }
 

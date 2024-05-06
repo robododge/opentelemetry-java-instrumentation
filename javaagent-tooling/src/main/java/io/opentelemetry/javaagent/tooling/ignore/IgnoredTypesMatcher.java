@@ -38,11 +38,13 @@ public class IgnoredTypesMatcher extends ElementMatcher.Junction.AbstractBase<Ty
     if (ignored == IgnoreAllow.ALLOW) {
       if (foundKoala) {
         System.err.printf("Found koala in ignores checking '%s' MATCH=true\n", name);
+        Thread.dumpStack();
       }
       return false;
     } else if (ignored == IgnoreAllow.IGNORE) {
       if (foundKoala) {
         System.err.printf("Found koala in ignores checking '%s' MATCH=false\n", name);
+        Thread.dumpStack();
       }
       return true;
     }
