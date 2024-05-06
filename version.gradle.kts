@@ -7,5 +7,5 @@ allprojects {
   } else {
     version = stableVersion
   }
-  version = "1.21.0-koala"
+  version = "1.21.0-koala-v2"
 }
