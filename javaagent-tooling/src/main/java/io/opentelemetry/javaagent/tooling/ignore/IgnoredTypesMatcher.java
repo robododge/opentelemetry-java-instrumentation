@@ -8,6 +8,7 @@ package io.opentelemetry.javaagent.tooling.ignore;
 import io.opentelemetry.javaagent.tooling.util.Trie;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class IgnoredTypesMatcher extends ElementMatcher.Junction.AbstractBase<TypeDescription> {
 
@@ -17,14 +18,32 @@ public class IgnoredTypesMatcher extends ElementMatcher.Junction.AbstractBase<Ty
     this.ignoredTypes = ignoredTypes;
   }
 
+  private static final AtomicInteger igoreKoalaCount = new AtomicInteger(0);
+
   @Override
   public boolean matches(TypeDescription target) {
     String name = target.getActualName();
 
     IgnoreAllow ignored = ignoredTypes.getOrNull(name);
+
+    int koalaCount = igoreKoalaCount.get();
+    boolean foundKoala = false;
+
+    if (koalaCount < 1000) {
+      if (  name.contains("koala")) {
+        igoreKoalaCount.incrementAndGet();
+        foundKoala = true;
+      }
+    }
     if (ignored == IgnoreAllow.ALLOW) {
+      if (foundKoala) {
+        System.err.printf("Found koala in ignores checking '%s' MATCH=true\n", name);
+      }
       return false;
     } else if (ignored == IgnoreAllow.IGNORE) {
+      if (foundKoala) {
+        System.err.printf("Found koala in ignores checking '%s' MATCH=false\n", name);
+      }
       return true;
     }
 

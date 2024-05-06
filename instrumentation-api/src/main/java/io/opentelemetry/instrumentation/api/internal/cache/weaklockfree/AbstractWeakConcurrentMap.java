@@ -57,6 +57,21 @@ abstract class AbstractWeakConcurrentMap<K, V, L> implements Iterable<Map.Entry<
   private final WeakReference<ConcurrentMap<WeakKey<K>, ?>> weakTarget;
 
   final static AtomicInteger weakKeyCounter = new AtomicInteger();
+  final static AtomicInteger getCounter = new AtomicInteger();
+  final static AtomicInteger putCounter = new AtomicInteger();
+  final static AtomicInteger putIfAbsentCounter = new AtomicInteger();
+  final static AtomicInteger computeIfAbsentCounter = new AtomicInteger();
+  final static AtomicInteger koalaCLCounter = new AtomicInteger();
+  final static AtomicInteger generalCLCounter = new AtomicInteger();
+
+  final static int WEAK_KEY_COUNTER_LIMIT = 3000;
+  final static int GET_COUNTER_LIMIT = 1000;
+  final static int PUT_COUNTER_LIMIT = 1000;
+  final static int PUT_IF_ABSENT_COUNTER_LIMIT = 1000;
+  final static int COMPUTE_IF_ABSENT_COUNTER_LIMIT = 1000;
+  final static int KOALA_CL_COUNTER_LIMIT = 3000;
+  final static int GENERAL_CL_COUNTER_LIMIT = 3000;
+
 
   protected AbstractWeakConcurrentMap() {
     this(new ConcurrentHashMap<>());
@@ -88,6 +103,11 @@ abstract class AbstractWeakConcurrentMap<K, V, L> implements Iterable<Map.Entry<
     if (key == null) {
       throw new NullPointerException();
     }
+    int getCount = getCounter.incrementAndGet();
+    if (getCount < GET_COUNTER_LIMIT) {
+      System.err.printf("get[%d]: %s\n", getCount, key.toString());
+    }
+
     V value;
     L lookupKey = getLookupKey(key);
     try {
@@ -145,6 +165,12 @@ abstract class AbstractWeakConcurrentMap<K, V, L> implements Iterable<Map.Entry<
    * @return The previous entry or {@code null} if it does not exist.
    */
   public V put(K key, V value) {
+
+    int putCount = putCounter.incrementAndGet();
+    if (putCount < PUT_COUNTER_LIMIT) {
+      System.err.printf("get[%d]: %s -> %s\n", putCount, key.toString(), value.toString());
+    }
+
     if (key == null || value == null) {
       throw new NullPointerException();
     }
@@ -160,6 +186,12 @@ abstract class AbstractWeakConcurrentMap<K, V, L> implements Iterable<Map.Entry<
     if (key == null || value == null) {
       throw new NullPointerException();
     }
+
+    int putIfAbsentCount = putIfAbsentCounter.incrementAndGet();
+    if (putIfAbsentCount < PUT_IF_ABSENT_COUNTER_LIMIT) {
+      System.err.printf("putIfAbsent[%d]: %s -> %s\n", putIfAbsentCount, key.toString(), value.toString());
+    }
+
     V previous;
     L lookupKey = getLookupKey(key);
     try {
@@ -174,6 +206,12 @@ abstract class AbstractWeakConcurrentMap<K, V, L> implements Iterable<Map.Entry<
     if (key == null || mappingFunction == null) {
       throw new NullPointerException();
     }
+
+    int computeIfAbsentCount = computeIfAbsentCounter.incrementAndGet();
+    if (computeIfAbsentCount < COMPUTE_IF_ABSENT_COUNTER_LIMIT) {
+      System.err.printf("computeIfAbsent[%d]: %s\n", computeIfAbsentCount, key.toString());
+    }
+
     V previous;
     L lookupKey = getLookupKey(key);
     try {
@@ -323,10 +361,26 @@ abstract class AbstractWeakConcurrentMap<K, V, L> implements Iterable<Map.Entry<
     WeakKey(K key, WeakReference<ConcurrentMap<WeakKey<K>, ?>> ownerRef) {
       super(key, REFERENCE_QUEUE);
 
+
       int wCnt = weakKeyCounter.getAndIncrement();
-      System.err.printf("New WeakKey.referent[%d]: %s \n", wCnt, key.toString());
-      if (wCnt < 80000) {
-        Thread.dumpStack();
+      //Print the weakKey entries
+      if (wCnt < WEAK_KEY_COUNTER_LIMIT) {
+        System.err.printf("New WeakKey.referent[%d]: %s \n", wCnt, key.toString());
+        if (wCnt % 10 == 0) {  //only print every 10th stack dump
+          Thread.dumpStack();
+        }
+      }
+
+      int koalaCnt = koalaCLCounter.get();
+      if (koalaCnt < KOALA_CL_COUNTER_LIMIT && key.toString().contains("koala")) {
+        koalaCLCounter.incrementAndGet();
+        System.err.printf("Found a koala class loader number[%d]: %s \n", koalaCnt, key);
+      }
+
+      int generalCnt = generalCLCounter.get();
+      if (generalCnt < GENERAL_CL_COUNTER_LIMIT ) {
+        generalCLCounter.incrementAndGet();
+        System.err.printf("Found a general class loader number[%d]: %s \n", generalCnt, key);
       }
 
       hashCode = System.identityHashCode(key);
